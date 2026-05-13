@@ -18,6 +18,10 @@ dependencies {
     implementation("io.quarkus:quarkus-websockets-next")
     implementation("io.quarkus:quarkus-arc")
     testImplementation("io.quarkus:quarkus-junit")
+    compileOnly("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
+    implementation("io.quarkus:quarkus-rest-client-jackson")
+    implementation("io.quarkus:quarkus-rest-jackson")
 }
 
 group = "remote.agent.connect"
