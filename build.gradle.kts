@@ -15,7 +15,6 @@ val quarkusPlatformVersion: String by project
 dependencies {
     implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
     implementation("io.quarkus:quarkus-websockets-client")
-    implementation("io.quarkus:quarkus-websockets-next")
     implementation("io.quarkus:quarkus-arc")
     testImplementation("io.quarkus:quarkus-junit")
     compileOnly("org.projectlombok:lombok:1.18.42")

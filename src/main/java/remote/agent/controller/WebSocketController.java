@@ -1,10 +1,15 @@
 package remote.agent.controller;
 
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.websocket.*;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+
 @Slf4j
-@ApplicationScoped
+@ClientEndpoint
 public class WebSocketController {
+
 
 }

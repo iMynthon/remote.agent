@@ -1,4 +1,4 @@
 package remote.agent.dto;
 
-public class LoginResponse {
+public record LoginResponse(String id,String username,Long connectionId) {
 }
