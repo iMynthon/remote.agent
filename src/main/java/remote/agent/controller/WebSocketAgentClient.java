@@ -1,30 +1,34 @@
 package remote.agent.controller;
 
-import io.smallrye.mutiny.Uni;
+import io.quarkus.websockets.next.*;
 import jakarta.inject.Inject;
-import jakarta.websocket.*;
-import jakarta.websocket.server.PathParam;
 import lombok.extern.slf4j.Slf4j;
 import remote.agent.service.StreamingDesktopService;
-import java.nio.ByteBuffer;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@ClientEndpoint
+@WebSocketClient(path = "/wsremote/{connectionId}")
 public class WebSocketAgentClient {
 
     @Inject
     private StreamingDesktopService streamingDesktopService;
 
-    private Session session;
-
-    private String connectionId;
+    private Map<String,WebSocketClientConnection> initiatedConnections = new ConcurrentHashMap<>();
 
     @OnOpen
-    public void onOpen(Session session, @PathParam("connectionId") String connectionId) {
-        this.session = session;
-        this.connectionId = connectionId;
-        log.info("Calling method ws OnOpen - {} -{}", session.getId(), this.connectionId);
-        streamingDesktopService.startStreamingRemoteScreen(this, connectionId)
+    public void onOpen(WebSocketClientConnection webSocketClientConnection, @PathParam("connectionId") String connectionId) {
+        log.info("Calling method ws OnOpen - {} -{}", webSocketClientConnection.id(), connectionId);
+        if(webSocketClientConnection.isOpen()) {
+            initiatedConnections.put(connectionId, webSocketClientConnection);
+        }
+    }
+
+    @OnBinaryMessage
+    public void onBinaryMessage(WebSocketClientConnection webSocketClientConnection,@PathParam("connectionId") String connectionId) {
+        log.info("Calling method ws onBinaryMessage - {} -{}",webSocketClientConnection.id(), connectionId);
+        streamingDesktopService.startStreamingRemoteScreen(webSocketClientConnection, connectionId)
                 .subscribe().with(
                         success -> log.info("Streaming Remote Screen has been started - {}", connectionId),
                         failure -> log.error("Failed to start streaming - {}", failure.getMessage())
@@ -32,33 +36,17 @@ public class WebSocketAgentClient {
     }
 
     @OnClose
-    public void onClose(Session session, @PathParam("connectionId") String connectionId) {
-        this.connectionId = connectionId;
-        log.info("Calling method ws OnClose - {} - {}", session.getId(), this.connectionId);
-        streamingDesktopService.stopStreamingRemoteScreen(this.connectionId)
+    public void onClose(WebSocketClientConnection webSocketClientConnection,@PathParam("connectionId") String connectionId) {
+        log.info("Calling method ws OnClose - {} - {}",webSocketClientConnection.id(),connectionId);
+        streamingDesktopService.stopStreamingRemoteScreen(connectionId)
                 .subscribe().with(
-                        v -> log.info("Streaming stopped for {}", this.connectionId),
+                        v -> log.info("Streaming stopped for {}", connectionId),
                         err -> log.error("Failed to stop streaming", err)
                 );
     }
 
     @OnError
     public void onError(Throwable throwable) {
-        log.error("WebSocket connection error: {} - {}", connectionId, throwable.getMessage());
-    }
-
-    public Uni<Void> sendBinary(byte[] data) {
-        if (session == null || !session.isOpen()) {
-            return Uni.createFrom().voidItem();
-        }
-        return Uni.createFrom().emitter(emitter -> {
-            session.getAsyncRemote().sendBinary(ByteBuffer.wrap(data), result -> {
-                if (result.isOK()) {
-                    emitter.complete(null);
-                } else {
-                    emitter.fail(new RuntimeException("WebSocket send failed", result.getException()));
-                }
-            });
-        });
+        log.error("WebSocket connection error: {}",throwable.getMessage());
     }
 }

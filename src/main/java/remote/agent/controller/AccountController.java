@@ -1,9 +1,9 @@
 package remote.agent.controller;
 
+import io.quarkus.websockets.next.BasicWebSocketConnector;
+import io.quarkus.websockets.next.WebSocketConnector;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.websocket.ContainerProvider;
-import jakarta.websocket.WebSocketContainer;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -24,7 +24,7 @@ public class AccountController {
     private AccountService accountService;
 
     @Inject
-    private WebSocketAgentClient webSocketAgentClient;
+    private BasicWebSocketConnector connector;
 
     @POST
     @Path("/reg")
@@ -42,16 +42,21 @@ public class AccountController {
          return accountService.getLogin(registrationRequest);
     }
 
-    @POST
-    @Path("/agent/wsconnect")
-    @Consumes(MediaType.TEXT_PLAIN)
-    public void connectToServer(@QueryParam("connectionId") String connectionId) {
+    @GET
+    @Path("/wsconnect/{connectionId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response connectToServer(@PathParam("connectionId") String connectionId) {
+        log.info("Connecting to server with connectionId {}", connectionId);
         try {
-            WebSocketContainer container = ContainerProvider.getWebSocketContainer();
             URI uri = URI.create(String.format("ws://192.168.88.2:5679/wsremote/%s",connectionId));
-            container.connectToServer(webSocketAgentClient,uri);
+            log.info("Connected to server with uri {}", uri.getPath());
+            connector.baseUri(uri)
+                    .connectAndAwait();
+            return Response.ok().entity("Подключение инициировано").build();
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Ошибка подключения агента для ID {}: {}", connectionId, e.getMessage());
+            return Response.serverError().entity("Ошибка подключения: " + e.getMessage()).build();
         }
     }
 

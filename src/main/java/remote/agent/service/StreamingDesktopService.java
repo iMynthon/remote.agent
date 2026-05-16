@@ -1,11 +1,12 @@
 package remote.agent.service;
 
+import io.quarkus.websockets.next.WebSocketClientConnection;
+import io.quarkus.websockets.next.WebSocketConnection;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.subscription.Cancellable;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
-import remote.agent.controller.WebSocketAgentClient;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -42,11 +43,11 @@ public class StreamingDesktopService {
      * При повторном вызове для того же connectionId старый стрим будет остановлен перед запуском нового.
      * </p>
      *
-     * @param webSocketAgentClient – соединение WebSocket, через которое отправлять кадры
+     * @param webSocketClientConnection – соединение WebSocket, через которое отправлять кадры
      * @param connectionId        – идентификатор клиента (для логирования и управления)
      * @return Uni<Void> – сигнал завершения запуска (в данном случае просто пустой)
      */
-    public Uni<Void> startStreamingRemoteScreen(WebSocketAgentClient webSocketAgentClient, String connectionId) {
+    public Uni<Void> startStreamingRemoteScreen(WebSocketClientConnection webSocketClientConnection, String connectionId) {
         log.info("Callable startStreamingRemoteScreen: connectionId={}", connectionId);
         // Останавливаем предыдущий стрим для этого же клиента, если он существует
         // .subscribe().with() – подписываемся на результат остановки (асинхронно)
@@ -64,7 +65,7 @@ public class StreamingDesktopService {
                 .onItem().transformToUniAndConcatenate(startSt ->
                         desktopRemoteScreen()
                                 // Полученный Uni<byte[]> (скриншот) преобразуем в Uni<Void> путём отправки по WebSocket
-                                .onItem().transformToUni(webSocketAgentClient::sendBinary)
+                                .onItem().transformToUni(webSocketClientConnection::sendBinary)
                 )
                 // Подписываемся на полученный поток (запускаем его)
                 .subscribe().with(
